@@ -1,0 +1,108 @@
+name: "Normalize & Rename Markdown Files"
+
+on:
+  push:
+    paths:
+      - '**/*.md'
+  workflow_dispatch:
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Rename Markdown Files
+        run: |
+          # Emoji map for file prefixes
+          declare -A emoji_map=(
+            ["0"]="🗂️"
+            ["1"]="📥"
+            ["2"]="🚀"
+            ["3"]="🔗"
+            ["4"]="🐳"
+            ["5"]="🧩"
+            ["6"]="⚙️"
+            ["7"]="🔧"
+            ["8"]="✅"
+            ["9"]="📊"
+            ["10"]="🔒"
+            ["11"]="🔄"
+            ["12.1"]="🔐"
+            ["12.2"]="🤖"
+            ["12.3"]="🧹"
+            ["12.4"]="🎛️"
+            ["12.5"]="🖼️"
+            ["12.5.1"]="🧪"
+            ["12.6"]="📦"
+            ["12.7"]="🔑"
+            ["12.8"]="🛡️"
+            ["12.9"]="🚨"
+            ["12.10"]="📈"
+            ["12.11"]="⏱️"
+            ["12.12"]="📖"
+            ["13.1"]="🌐"
+            ["13.2"]="⚖️"
+            ["13.3"]="🔄"
+            ["13.4"]="💡"
+            ["13.5"]="📜"
+            ["13.6"]="🧩"
+            ["13.7"]="🎉"
+          )
+
+          # Rename files
+          for file in $(find . -type f -name "*.md" ! -path "./node_modules/*" ! -path "./.github/*" ! -path "./scripts/*"); do
+            # Extract filename and path
+            filename=$(basename "$file" .md)
+            filepath=$(dirname "$file")
+
+            # Handle special case for the master blueprint
+            if [[ "$filename" =~ ^VV-Video-AI-System ]]; then
+              new_filename="🗂️ 0: VV Video AI System Master Blueprint V2.2.md"
+              mv "$file" "$filepath/$new_filename"
+              echo "Renamed $file → $new_filename"
+              continue
+            fi
+
+            # Extract key and title
+            if [[ "$filename" =~ ^([0-9]+(\.[0-9]+)*)([-:\s]*(.*))?$ ]]; then
+              key="${BASH_REMATCH[1]}"
+              title="${BASH_REMATCH[4]}"
+            else
+              echo "Skipping $file (no matching pattern)"
+              continue
+            fi
+
+            # Clean up title: Remove emojis, trim spaces, normalize
+            title=$(echo "$title" | sed -E 's/[\p{Emoji_Presentation}\p{Emoji}\uFE0F]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            title=$(echo "$title" | sed -r 's/[^a-zA-Z0-9]+/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS=" ")
+
+            # Map emoji for the key
+            emoji="${emoji_map[$key]}"
+            if [[ -z "$emoji" ]]; then
+              echo "No emoji mapping for key $key, skipping $file"
+              continue
+            fi
+
+            # Construct new filename
+            new_filename="$emoji $key: $title.md"
+            mv "$file" "$filepath/$new_filename"
+            echo "Renamed $file → $new_filename"
+          done
+
+      - name: Commit & Push Changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: normalize & rename markdown files"
+            git push
+          else
+            echo "✅ No files to rename."
