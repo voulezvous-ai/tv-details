@@ -59,41 +59,44 @@ jobs:
           # Iterate over all .md files and rename them
           for file in $(find . -type f -name "*.md" ! -path "./node_modules/*" ! -path "./.github/*" ! -path "./scripts/*"); do
             # Extract filename and path components
-            filename=$(basename "$file" .md)
+            filename=$(basename "$file")
             filepath=$(dirname "$file")
+
+            # Debugging: Output the current file being processed
+            echo "Processing file: \"$file\""
 
             # Handle special case for the master blueprint
             if [[ "$filename" =~ ^VV-Video-AI-System ]]; then
               new_filename="🗂️ 0: VV Video AI System Master Blueprint V2.2.md"
               mv "$file" "$filepath/$new_filename"
-              echo "Renamed $file → $new_filename"
+              echo "Renamed \"$file\" → \"$new_filename\""
               continue
             fi
 
             # Extract key and title
-            if [[ "$filename" =~ ^([0-9]+(\.[0-9]+)*)([-:\s]*(.*))?$ ]]; then
+            if [[ "$filename" =~ ^([0-9]+(\.[0-9]+)*)([-:\s]*(.*))?\.md$ ]]; then
               key="${BASH_REMATCH[1]}"
               title="${BASH_REMATCH[4]}"
             else
-              echo "Skipping $file (no matching pattern)"
+              echo "Skipping \"$file\" (no matching pattern)"
               continue
             fi
 
-            # Clean up title: Remove emojis, trim spaces, normalize
-            title=$(echo "$title" | sed -E 's/[\p{Emoji_Presentation}\p{Emoji}\uFE0F]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            title=$(echo "$title" | sed -r 's/[^a-zA-Z0-9]+/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS=" ")
+            # Clean up title: Remove emojis, trim spaces, preserve accents
+            title=$(echo "$title" | sed -E 's/[\p{Emoji_Presentation}\p{Emoji}\uFE0F]//g; s/^[[:space:]]*//; s/[[:space:]]*$//')
+            title=$(echo "$title" | sed -E 's/[^a-zA-Z0-9À-ÿ()&%]+/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}' OFS=" ")
 
             # Map emoji for the key
             emoji="${emoji_map[$key]}"
             if [[ -z "$emoji" ]]; then
-              echo "No emoji mapping for key $key, skipping $file"
+              echo "No emoji mapping for key \"$key\", skipping \"$file\""
               continue
             fi
 
             # Construct new filename
             new_filename="$emoji $key: $title.md"
             mv "$file" "$filepath/$new_filename"
-            echo "Renamed $file → $new_filename"
+            echo "Renamed \"$file\" → \"$new_filename\""
           done
 
       - name: Commit & Push Changes
