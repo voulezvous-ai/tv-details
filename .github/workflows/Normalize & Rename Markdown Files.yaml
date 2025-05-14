@@ -20,7 +20,7 @@ jobs:
 
       - name: Rename Markdown Files
         run: |
-          # Emoji map for file prefixes
+          # Define emoji mappings for file prefixes
           declare -A emoji_map=(
             ["0"]="🗂️"
             ["1"]="📥"
@@ -56,9 +56,9 @@ jobs:
             ["13.7"]="🎉"
           )
 
-          # Rename files
+          # Iterate over all .md files and rename them
           for file in $(find . -type f -name "*.md" ! -path "./node_modules/*" ! -path "./.github/*" ! -path "./scripts/*"); do
-            # Extract filename and path
+            # Extract filename and path components
             filename=$(basename "$file" .md)
             filepath=$(dirname "$file")
 
